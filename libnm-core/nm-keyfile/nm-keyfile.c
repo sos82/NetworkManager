@@ -3761,14 +3761,16 @@ nm_keyfile_read_ensure_uuid (NMConnection *connection,
  *   the relative path is made absolute using @base_dir. This must
  *   be an absolute path.
  * @handler_flags: the #NMKeyfileHandlerFlags.
- * @handler: read handler
+ * @handler: (allow-none) (scope call): read handler
  * @user_data: user data for read handler
- * @error: error
+ * @error: (allow-none) (out): error
  *
  * Tries to create a NMConnection from a keyfile. The resulting keyfile is
  * not normalized and might not even verify.
  *
  * Returns: (transfer full): on success, returns the created connection.
+ *
+ * Since: 1.28
  */
 NMConnection *
 nm_keyfile_read (GKeyFile *keyfile,
@@ -4088,6 +4090,19 @@ _write_setting_wireguard (NMSetting *setting, KeyfileWriterInfo *info)
 	}
 }
 
+/**
+ * nm_keyfile_write:
+ * @connection: the #NMConnection to persist to keyfile.
+ * @handler_flags: the #NMKeyfileHandlerFlags.
+ * @handler: (allow-none) (scope call): optional handler for events and
+ *   to override the default behavior.
+ * @user_data: argument for @handler.
+ * @error: the #GError in case writing fails.
+ *
+ * Returns: (transfer full): a new #GKeyFile or %NULL on error.
+ *
+ * Since: 1.28
+ */
 GKeyFile *
 nm_keyfile_write (NMConnection *connection,
                   NMKeyfileHandlerFlags handler_flags,
@@ -4357,6 +4372,8 @@ nm_keyfile_utils_create_filename (const char *name,
  * Note that @src is no longer valid after this call. If you want
  * to keep using the same GError*, you need to set it to %NULL
  * after calling this function on it.
+ *
+ * Since: 1.28
  */
 void
 nm_keyfile_handler_data_fail_with_error (NMKeyfileHandlerData *handler_data,
@@ -4382,6 +4399,8 @@ nm_keyfile_handler_data_fail_with_error (NMKeyfileHandlerData *handler_data,
  *
  * Get context information of the current event. This function can be called
  * on all events, but the context information may be unset.
+ *
+ * Since: 1.28
  */
 void
 nm_keyfile_handler_data_get_context (const NMKeyfileHandlerData *handler_data,
@@ -4422,6 +4441,8 @@ _nm_keyfile_handler_data_warn_get_message (const NMKeyfileHandlerData *handler_d
  *  event.
  * @out_message: (out) (allow-none) (transfer none): the warning message.
  * @out_severity: (out) (allow-none): the #NMKeyfileWarnSeverity warning severity.
+ *
+ * Since: 1.28
  */
 void
 nm_keyfile_handler_data_warn_get (const NMKeyfileHandlerData *handler_data,
