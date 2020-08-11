@@ -1,0 +1,20 @@
+[package]
+name = "dhcp-client"
+version = "0.1.0"
+authors = ["Antonio Cardace <acardace@redhat.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+bindgen = "0.53.1"
+meson = "1.0.0"
+varlink_generator = "9.0.0"
+
+[dependencies]
+libc = "0.2.74"
+varlink = "11.0.0"
+serde = "1.0.115"
+serde_derive = "1.0.115"
+serde_json = "1.0.57"
+unix_socket = "0.5.0"
