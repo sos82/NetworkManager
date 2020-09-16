@@ -359,4 +359,5 @@ _nmtstp_setup_tests(void)
     g_test_add_data_func("/l3cfg/1", GINT_TO_POINTER(1), test_l3cfg);
     g_test_add_data_func("/l3cfg/2", GINT_TO_POINTER(2), test_l3cfg);
     g_test_add_data_func("/l3cfg/3", GINT_TO_POINTER(3), test_l3cfg);
+    g_test_add_data_func("/l3cfg/4", GINT_TO_POINTER(4), test_l3cfg);
 }

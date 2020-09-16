@@ -12,6 +12,7 @@
 #include "platform/nmp-object.h"
 #include "nm-netns.h"
 #include "n-acd/src/n-acd.h"
+#include "nm-l3-ipv4ll.h"
 
 /*****************************************************************************/
 
@@ -285,6 +286,7 @@ static NM_UTILS_ENUM2STR_DEFINE(
     _l3_config_notify_type_to_string,
     NML3ConfigNotifyType,
     NM_UTILS_ENUM2STR(NM_L3_CONFIG_NOTIFY_TYPE_ACD_COMPLETED, "acd-complete"),
+    NM_UTILS_ENUM2STR(NM_L3_CONFIG_NOTIFY_TYPE_IPV4LL_EVENT, "ipv4ll-event"),
     NM_UTILS_ENUM2STR(NM_L3_CONFIG_NOTIFY_TYPE_PLATFORM_CHANGE, "platform-change"),
     NM_UTILS_ENUM2STR(NM_L3_CONFIG_NOTIFY_TYPE_PLATFORM_CHANGE_ON_IDLE, "platform-change-on-idle"),
     NM_UTILS_ENUM2STR(NM_L3_CONFIG_NOTIFY_TYPE_POST_COMMIT, "post-commit"),
@@ -299,9 +301,10 @@ _l3_config_notify_data_to_string(const NML3ConfigNotifyData *notify_data,
                                  char *                      sbuf,
                                  gsize                       sbuf_size)
 {
-    char  sbuf_addr[NM_UTILS_INET_ADDRSTRLEN];
-    char *s = sbuf;
-    gsize l = sbuf_size;
+    char      sbuf_addr[NM_UTILS_INET_ADDRSTRLEN];
+    char *    s = sbuf;
+    gsize     l = sbuf_size;
+    in_addr_t addr4;
 
     nm_assert(sbuf);
     nm_assert(sbuf_size > 0);
@@ -331,6 +334,18 @@ _l3_config_notify_data_to_string(const NML3ConfigNotifyData *notify_data,
                                &l,
                                ", obj-type-flags=0x%x",
                                notify_data->platform_change_on_idle.obj_type_flags);
+        break;
+    case NM_L3_CONFIG_NOTIFY_TYPE_IPV4LL_EVENT:
+        nm_assert(NM_IS_L3_IPV4LL(notify_data->ipv4ll_event.ipv4ll));
+        addr4 = nm_l3_ipv4ll_get_addr(notify_data->ipv4ll_event.ipv4ll);
+        nm_utils_strbuf_append(&s,
+                               &l,
+                               ", ipv4ll=" NM_HASH_OBFUSCATE_PTR_FMT "%s%s",
+                               NM_HASH_OBFUSCATE_PTR(notify_data->ipv4ll_event.ipv4ll),
+                               NM_PRINT_FMT_QUOTED2(addr4 != 0,
+                                                    ", addr=",
+                                                    _nm_utils_inet4_ntop(addr4, sbuf_addr),
+                                                    ""));
         break;
     default:
         break;

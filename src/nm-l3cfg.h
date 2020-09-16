@@ -6,6 +6,8 @@
 #include "platform/nmp-object.h"
 #include "nm-l3-config-data.h"
 
+#define NM_L3CFG_CONFIG_PRIORITY_IPV4LL 0
+
 #define NM_TYPE_L3CFG            (nm_l3cfg_get_type())
 #define NM_L3CFG(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj), NM_TYPE_L3CFG, NML3Cfg))
 #define NM_L3CFG_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass), NM_TYPE_L3CFG, NML3CfgClass))
@@ -45,6 +47,8 @@ typedef enum {
      * notifications without also subscribing directly to the platform. */
     NM_L3_CONFIG_NOTIFY_TYPE_PLATFORM_CHANGE_ON_IDLE,
 
+    NM_L3_CONFIG_NOTIFY_TYPE_IPV4LL_EVENT,
+
     _NM_L3_CONFIG_NOTIFY_TYPE_NUM,
 } NML3ConfigNotifyType;
 
@@ -53,6 +57,8 @@ typedef struct {
     const NML3ConfigData *l3cd;
     gconstpointer         tag;
 } NML3ConfigNotifyPayloadAcdFailedSource;
+
+struct _NML3IPv4LL;
 
 typedef struct {
     NML3ConfigNotifyType notify_type;
@@ -72,6 +78,10 @@ typedef struct {
         struct {
             guint32 obj_type_flags;
         } platform_change_on_idle;
+
+        struct {
+            struct _NML3IPv4LL *ipv4ll;
+        } ipv4ll_event;
     };
 } NML3ConfigNotifyData;
 
