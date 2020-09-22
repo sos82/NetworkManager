@@ -276,6 +276,7 @@ NM_GOBJECT_PROPERTIES_DEFINE (NMIP4Config,
 
 typedef struct {
 	bool metered:1;
+	bool never_default:1;
 	guint32 mtu;
 	int ifindex;
 	NMIPConfigSource mtu_source;
@@ -904,6 +905,8 @@ nm_ip4_config_merge_setting (NMIP4Config *self,
 	nm_ip4_config_mdns_set (self, mdns);
 	nm_ip4_config_llmnr_set (self, llmnr);
 
+	nm_ip4_config_set_never_default (self, nm_setting_ip_config_get_never_default (setting));
+
 	g_object_thaw_notify (G_OBJECT (self));
 }
 
@@ -1128,6 +1131,9 @@ nm_ip4_config_merge (NMIP4Config *dst,
 	nm_ip4_config_set_metered (dst, nm_ip4_config_get_metered (dst) ||
 	                                nm_ip4_config_get_metered (src));
 
+	/* never default */
+	nm_ip4_config_set_never_default (dst, nm_ip4_config_get_never_default (dst) ||
+	                                 nm_ip4_config_get_never_default (src));
 	/* DNS priority */
 	if (nm_ip4_config_get_dns_priority (src))
 		nm_ip4_config_set_dns_priority (dst, nm_ip4_config_get_dns_priority (src));
@@ -1862,6 +1868,12 @@ nm_ip4_config_replace (NMIP4Config *dst, const NMIP4Config *src, gboolean *relev
 	/* metered */
 	if (src_priv->metered != dst_priv->metered) {
 		dst_priv->metered = src_priv->metered;
+		has_minor_changes = TRUE;
+	}
+
+	/* never default */
+	if (src_priv->never_default != dst_priv->never_default) {
+		dst_priv->never_default = src_priv->never_default;
 		has_minor_changes = TRUE;
 	}
 
@@ -2739,6 +2751,24 @@ nm_ip4_config_get_metered (const NMIP4Config *self)
 	const NMIP4ConfigPrivate *priv = NM_IP4_CONFIG_GET_PRIVATE (self);
 
 	return priv->metered;
+}
+
+/*****************************************************************************/
+
+void
+nm_ip4_config_set_never_default (NMIP4Config *self, gboolean never_default)
+{
+	NMIP4ConfigPrivate *priv = NM_IP4_CONFIG_GET_PRIVATE (self);
+
+	priv->never_default = never_default;
+}
+
+gboolean
+nm_ip4_config_get_never_default (const NMIP4Config *self)
+{
+	const NMIP4ConfigPrivate *priv = NM_IP4_CONFIG_GET_PRIVATE (self);
+
+	return priv->never_default;
 }
 
 /*****************************************************************************/
