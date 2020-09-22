@@ -2180,8 +2180,6 @@ src_libNetworkManager_la_SOURCES = \
 	src/nm-checkpoint-manager.c \
 	src/nm-checkpoint-manager.h \
 	\
-	src/devices/nm-acd-manager.c \
-	src/devices/nm-acd-manager.h \
 	src/devices/nm-lldp-listener.c \
 	src/devices/nm-lldp-listener.h \
 	src/devices/nm-device.c \
@@ -4004,20 +4002,14 @@ src_devices_tests_ldflags = \
 
 check_programs += \
 	src/devices/tests/test-lldp \
-	src/devices/tests/test-acd
+	$(NULL)
 
 src_devices_tests_test_lldp_CPPFLAGS = $(src_cppflags_test)
 src_devices_tests_test_lldp_LDFLAGS = $(src_devices_tests_ldflags)
 src_devices_tests_test_lldp_LDADD = \
 	src/libNetworkManagerTest.la
 
-src_devices_tests_test_acd_CPPFLAGS = $(src_cppflags_test)
-src_devices_tests_test_acd_LDFLAGS = $(src_devices_tests_ldflags)
-src_devices_tests_test_acd_LDADD = \
-	src/libNetworkManagerTest.la
-
 $(src_devices_tests_test_lldp_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
-$(src_devices_tests_test_acd_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 
 EXTRA_DIST += \
 	src/devices/tests/meson.build

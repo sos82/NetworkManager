@@ -8,21 +8,20 @@
 
 #include <stdlib.h>
 
-#include "nm-ip4-config.h"
-#include "nm-ip6-config.h"
+#include "nm-l3-config-data.h"
 
-NMIP4Config *nm_dhcp_utils_ip4_config_from_options(struct _NMDedupMultiIndex *multi_idx,
-                                                   int                        ifindex,
-                                                   const char *               iface,
-                                                   GHashTable *               options,
-                                                   guint32                    route_table,
-                                                   guint32                    route_metric);
+NML3ConfigData *nm_dhcp_utils_ip4_config_from_options(struct _NMDedupMultiIndex *multi_idx,
+                                                      int                        ifindex,
+                                                      const char *               iface,
+                                                      GHashTable *               options,
+                                                      guint32                    route_table,
+                                                      guint32                    route_metric);
 
-NMIP6Config *nm_dhcp_utils_ip6_config_from_options(struct _NMDedupMultiIndex *multi_idx,
-                                                   int                        ifindex,
-                                                   const char *               iface,
-                                                   GHashTable *               options,
-                                                   gboolean                   info_only);
+NML3ConfigData *nm_dhcp_utils_ip6_config_from_options(struct _NMDedupMultiIndex *multi_idx,
+                                                      int                        ifindex,
+                                                      const char *               iface,
+                                                      GHashTable *               options,
+                                                      gboolean                   info_only);
 
 NMPlatformIP6Address nm_dhcp_utils_ip6_prefix_from_options(GHashTable *options);
 
@@ -39,5 +38,9 @@ gboolean nm_dhcp_utils_get_leasefile_path(int         addr_family,
 char **nm_dhcp_parse_search_list(guint8 *data, size_t n_data);
 
 char *nm_dhcp_utils_get_dhcp6_event_id(GHashTable *lease);
+
+gboolean nm_dhcp_utils_merge_new_dhcp6_lease(const NML3ConfigData * l3cd_old,
+                                             const NML3ConfigData * l3cd_new,
+                                             const NML3ConfigData **out_l3cd_merged);
 
 #endif /* __NETWORKMANAGER_DHCP_UTILS_H__ */

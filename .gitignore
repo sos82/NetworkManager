@@ -220,7 +220,6 @@ test-*.trs
 /src/NetworkManager-all-sym
 /src/NetworkManager.ver
 /src/devices/bluetooth/tests/nm-bt-test
-/src/devices/tests/test-acd
 /src/devices/tests/test-lldp
 /src/devices/wifi/tests/test-devices-wifi
 /src/devices/wwan/tests/test-service-providers
@@ -366,3 +365,4 @@ test-*.trs
 /src/tests/test-general
 /src/tests/test-general-with-expect
 /src/tests/test-resolvconf-capture
+/src/devices/tests/test-acd

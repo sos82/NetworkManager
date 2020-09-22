@@ -8,7 +8,6 @@
 #define __NETWORKMANAGER_DHCP_MANAGER_H__
 
 #include "nm-dhcp-client.h"
-#include "nm-ip4-config.h"
 #include "nm-dhcp-config.h"
 
 #define NM_TYPE_DHCP_MANAGER (nm_dhcp_manager_get_type())

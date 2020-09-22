@@ -368,14 +368,15 @@ typedef struct _NMDeviceClass {
 
     NMActStageReturn (*act_stage1_prepare)(NMDevice *self, NMDeviceStateReason *out_failure_reason);
     NMActStageReturn (*act_stage2_config)(NMDevice *self, NMDeviceStateReason *out_failure_reason);
-    NMActStageReturn (*act_stage3_ip_config_start)(NMDevice *           self,
-                                                   int                  addr_family,
-                                                   gpointer *           out_config,
-                                                   NMDeviceStateReason *out_failure_reason);
+    NMActStageReturn (*act_stage3_ip_config_start)(NMDevice *             self,
+                                                   int                    addr_family,
+                                                   const NML3ConfigData **out_l3cd,
+                                                   NMDeviceStateReason *  out_failure_reason);
     NMActStageReturn (*act_stage4_ip_config_timeout)(NMDevice *           self,
                                                      int                  addr_family,
                                                      NMDeviceStateReason *out_failure_reason);
 
+    //XXX: needs rework to not use NMIP4Config.
     void (*ip4_config_pre_commit)(NMDevice *self, NMIP4Config *config);
 
     /* Async deactivating (in the DEACTIVATING phase) */
@@ -498,8 +499,6 @@ void          nm_device_replace_vpn4_config(NMDevice *dev, NMIP4Config *old, NMI
 
 NMIP6Config *nm_device_get_ip6_config(NMDevice *dev);
 void         nm_device_replace_vpn6_config(NMDevice *dev, NMIP6Config *old, NMIP6Config *config);
-
-void nm_device_capture_initial_config(NMDevice *dev);
 
 int       nm_device_parent_get_ifindex(NMDevice *dev);
 NMDevice *nm_device_parent_get_device(NMDevice *dev);

@@ -32,15 +32,14 @@
 #define NM_MODEM_APN             "apn"
 
 /* Signals */
-#define NM_MODEM_PPP_STATS         "ppp-stats"
-#define NM_MODEM_PPP_FAILED        "ppp-failed"
-#define NM_MODEM_PREPARE_RESULT    "prepare-result"
-#define NM_MODEM_IP4_CONFIG_RESULT "ip4-config-result"
-#define NM_MODEM_IP6_CONFIG_RESULT "ip6-config-result"
-#define NM_MODEM_AUTH_REQUESTED    "auth-requested"
-#define NM_MODEM_AUTH_RESULT       "auth-result"
-#define NM_MODEM_REMOVED           "removed"
-#define NM_MODEM_STATE_CHANGED     "state-changed"
+#define NM_MODEM_PPP_STATS      "ppp-stats"
+#define NM_MODEM_PPP_FAILED     "ppp-failed"
+#define NM_MODEM_PREPARE_RESULT "prepare-result"
+#define NM_MODEM_NEW_CONFIG     "new-config"
+#define NM_MODEM_AUTH_REQUESTED "auth-requested"
+#define NM_MODEM_AUTH_RESULT    "auth-result"
+#define NM_MODEM_REMOVED        "removed"
+#define NM_MODEM_STATE_CHANGED  "state-changed"
 
 typedef enum {
     NM_MODEM_IP_METHOD_UNKNOWN = 0,
@@ -161,7 +160,6 @@ const char *nm_modem_get_driver(NMModem *modem);
 const char *nm_modem_get_device_id(NMModem *modem);
 const char *nm_modem_get_sim_id(NMModem *modem);
 const char *nm_modem_get_sim_operator_id(NMModem *modem);
-gboolean    nm_modem_get_iid(NMModem *modem, NMUtilsIPv6IfaceId *out_iid);
 const char *nm_modem_get_operator_code(NMModem *modem);
 const char *nm_modem_get_apn(NMModem *modem);
 
@@ -256,7 +254,13 @@ void nm_modem_emit_ppp_failed(NMModem *self, NMDeviceStateReason reason);
 GArray *nm_modem_get_connection_ip_type(NMModem *self, NMConnection *connection, GError **error);
 
 /* For subclasses */
-void nm_modem_emit_ip6_config_result(NMModem *self, NMIP6Config *config, GError *error);
+
+void nm_modem_emit_signal_new_config(NMModem *                 self,
+                                     int                       addr_family,
+                                     const NML3ConfigData *    l3cd,
+                                     gboolean                  do_slaac,
+                                     const NMUtilsIPv6IfaceId *iid,
+                                     GError *                  error);
 
 const char *nm_modem_ip_type_to_string(NMModemIPType ip_type);
 

@@ -8,9 +8,11 @@
 #include "nm-dhcp-config.h"
 
 #include "nm-dbus-interface.h"
+#include "NetworkManagerUtils.h"
 #include "nm-utils.h"
 #include "nm-dbus-object.h"
 #include "nm-core-utils.h"
+#include "nm-l3-config-data.h"
 
 /*****************************************************************************/
 
@@ -49,7 +51,9 @@ static GType nm_dhcp6_config_get_type(void);
 NM_GOBJECT_PROPERTIES_DEFINE(NMDhcpConfig, PROP_OPTIONS, );
 
 typedef struct {
-    GVariant *options;
+    const NML3ConfigData *l3cd;
+    GVariant *            options_var;
+    bool                  options_initialized : 1;
 } NMDhcpConfigPrivate;
 
 struct _NMDhcpConfig {
@@ -59,6 +63,7 @@ struct _NMDhcpConfig {
 
 struct _NMDhcpConfigClass {
     NMDBusObjectClass parent;
+    int               addr_family;
 };
 
 G_DEFINE_ABSTRACT_TYPE(NMDhcpConfig, nm_dhcp_config, NM_TYPE_DBUS_OBJECT)
@@ -67,18 +72,33 @@ G_DEFINE_ABSTRACT_TYPE(NMDhcpConfig, nm_dhcp_config, NM_TYPE_DBUS_OBJECT)
 
 /*****************************************************************************/
 
-void
-nm_dhcp_config_set_options(NMDhcpConfig *self, GHashTable *options)
+int
+nm_dhcp_config_get_addr_family(NMDhcpConfig *self)
 {
-    NMDhcpConfigPrivate *priv;
+    return NM_DHCP_CONFIG_GET_CLASS(self)->addr_family;
+}
+
+/*****************************************************************************/
+
+void
+nm_dhcp_config_set_lease(NMDhcpConfig *self, const NML3ConfigData *l3cd)
+{
+    nm_auto_unref_l3cd const NML3ConfigData *l3cd_old = NULL;
+    NMDhcpConfigPrivate *                    priv;
 
     g_return_if_fail(NM_IS_DHCP_CONFIG(self));
-    g_return_if_fail(options);
 
     priv = NM_DHCP_CONFIG_GET_PRIVATE(self);
 
-    nm_g_variant_unref(priv->options);
-    priv->options = g_variant_ref_sink(nm_utils_strdict_to_variant_asv(options));
+    if (priv->l3cd == l3cd)
+        return;
+
+    l3cd_old   = g_steal_pointer(&priv->l3cd);
+    priv->l3cd = nm_l3_config_data_ref_and_seal(l3cd);
+
+    nm_clear_pointer(&priv->options_var, g_variant_unref);
+    priv->options_initialized = FALSE;
+
     _notify(self, PROP_OPTIONS);
 }
 
@@ -86,25 +106,62 @@ const char *
 nm_dhcp_config_get_option(NMDhcpConfig *self, const char *key)
 {
     NMDhcpConfigPrivate *priv;
-    const char *         value;
+    NMDhcpLease *        lease;
 
     g_return_val_if_fail(NM_IS_DHCP_CONFIG(self), NULL);
     g_return_val_if_fail(key, NULL);
 
     priv = NM_DHCP_CONFIG_GET_PRIVATE(self);
 
-    if (priv->options && g_variant_lookup(priv->options, key, "&s", &value))
-        return value;
-    else
+    if (!priv->l3cd)
         return NULL;
+
+    lease = nm_l3_config_data_get_dhcp_lease(priv->l3cd, nm_dhcp_config_get_addr_family(self));
+    if (!lease)
+        return NULL;
+
+    return nm_dhcp_lease_lookup_option(lease, key);
 }
+
+/*****************************************************************************/
+
+static GVariant *
+_get_prop_options(NMDhcpConfig *self)
+{
+    NMDhcpConfigPrivate *priv = NM_DHCP_CONFIG_GET_PRIVATE(self);
+    NMDhcpLease *        lease;
+
+    if (G_LIKELY(priv->options_initialized))
+        goto out;
+
+    priv->options_initialized = TRUE;
+
+    if (priv->l3cd) {
+        lease = nm_l3_config_data_get_dhcp_lease(priv->l3cd, nm_dhcp_config_get_addr_family(self));
+        if (lease) {
+            GHashTable *options;
+
+            options           = nm_dhcp_lease_get_options(lease);
+            priv->options_var = g_variant_ref_sink(nm_utils_strdict_to_variant_asv(options));
+            goto out;
+        }
+    }
+
+    priv->options_var = g_variant_ref_sink(g_variant_new_array(G_VARIANT_TYPE("{sv}"), NULL, 0));
+
+out:
+    nm_assert(priv->options_var);
+    return priv->options_var;
+}
+
+/*****************************************************************************/
 
 GVariant *
 nm_dhcp_config_get_options(NMDhcpConfig *self)
 {
     g_return_val_if_fail(NM_IS_DHCP_CONFIG(self), NULL);
 
-    return NM_DHCP_CONFIG_GET_PRIVATE(self)->options;
+    return _get_prop_options(self);
 }
 
 /*****************************************************************************/
@@ -112,12 +169,11 @@ nm_dhcp_config_get_options(NMDhcpConfig *self)
 static void
 get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
 {
-    NMDhcpConfigPrivate *priv = NM_DHCP_CONFIG_GET_PRIVATE(object);
+    NMDhcpConfig *self = NM_DHCP_CONFIG(object);
 
     switch (prop_id) {
     case PROP_OPTIONS:
-        g_value_set_variant(value,
-                            priv->options ?: g_variant_new_array(G_VARIANT_TYPE("{sv}"), NULL, 0));
+        g_value_set_variant(value, _get_prop_options(self));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -144,7 +200,9 @@ finalize(GObject *object)
 {
     NMDhcpConfigPrivate *priv = NM_DHCP_CONFIG_GET_PRIVATE(object);
 
-    nm_g_variant_unref(priv->options);
+    nm_g_variant_unref(priv->options_var);
+
+    nm_l3_config_data_unref(priv->l3cd);
 
     G_OBJECT_CLASS(nm_dhcp_config_parent_class)->finalize(object);
 }
@@ -198,10 +256,13 @@ static void
 nm_dhcp4_config_class_init(NMDhcp4ConfigClass *klass)
 {
     NMDBusObjectClass *dbus_object_class = NM_DBUS_OBJECT_CLASS(klass);
+    NMDhcpConfigClass *dhcp_config_class = NM_DHCP_CONFIG_CLASS(klass);
 
     dbus_object_class->export_path     = NM_DBUS_EXPORT_PATH_NUMBERED(NM_DBUS_PATH "/DHCP4Config");
     dbus_object_class->interface_infos = NM_DBUS_INTERFACE_INFOS(&interface_info_dhcp4_config);
     dbus_object_class->export_on_construction = TRUE;
+
+    dhcp_config_class->addr_family = AF_INET;
 }
 
 /*****************************************************************************/
@@ -235,8 +296,11 @@ static void
 nm_dhcp6_config_class_init(NMDhcp6ConfigClass *klass)
 {
     NMDBusObjectClass *dbus_object_class = NM_DBUS_OBJECT_CLASS(klass);
+    NMDhcpConfigClass *dhcp_config_class = NM_DHCP_CONFIG_CLASS(klass);
 
     dbus_object_class->export_path     = NM_DBUS_EXPORT_PATH_NUMBERED(NM_DBUS_PATH "/DHCP6Config");
     dbus_object_class->interface_infos = NM_DBUS_INTERFACE_INFOS(&interface_info_dhcp6_config);
     dbus_object_class->export_on_construction = TRUE;
+
+    dhcp_config_class->addr_family = AF_INET6;
 }

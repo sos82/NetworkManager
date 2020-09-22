@@ -45,11 +45,10 @@ G_DEFINE_TYPE(NMDhcpManager, nm_dhcp_manager, G_TYPE_OBJECT)
 
 /*****************************************************************************/
 
-static void client_state_changed(NMDhcpClient * client,
-                                 NMDhcpState    state,
-                                 GObject *      ip_config,
-                                 GVariant *     options,
-                                 NMDhcpManager *self);
+static void client_state_changed(NMDhcpClient *  client,
+                                 NMDhcpState     state,
+                                 NML3ConfigData *l3cd,
+                                 NMDhcpManager * self);
 
 /*****************************************************************************/
 
@@ -186,11 +185,10 @@ remove_client_unref(NMDhcpManager *self, NMDhcpClient *client)
 }
 
 static void
-client_state_changed(NMDhcpClient * client,
-                     NMDhcpState    state,
-                     GObject *      ip_config,
-                     GVariant *     options,
-                     NMDhcpManager *self)
+client_state_changed(NMDhcpClient *  client,
+                     NMDhcpState     state,
+                     NML3ConfigData *l3cd,
+                     NMDhcpManager * self)
 {
     if (state >= NM_DHCP_STATE_TIMEOUT)
         remove_client_unref(self, client);

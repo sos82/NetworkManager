@@ -8,8 +8,6 @@
 
 #include "nm-setting-ip4-config.h"
 #include "nm-setting-ip6-config.h"
-#include "nm-ip4-config.h"
-#include "nm-ip6-config.h"
 #include "nm-dhcp-utils.h"
 
 #define NM_DHCP_TIMEOUT_DEFAULT  ((guint32) 45) /* default DHCP timeout, in seconds */
@@ -183,10 +181,7 @@ void nm_dhcp_client_start_timeout(NMDhcpClient *self);
 
 void nm_dhcp_client_watch_child(NMDhcpClient *self, pid_t pid);
 
-void nm_dhcp_client_set_state(NMDhcpClient *self,
-                              NMDhcpState   new_state,
-                              NMIPConfig *  ip_config,
-                              GHashTable *  options); /* str:str hash */
+void nm_dhcp_client_set_state(NMDhcpClient *self, NMDhcpState new_state, NML3ConfigData *l3cd);
 
 gboolean nm_dhcp_client_handle_event(gpointer      unused,
                                      const char *  iface,

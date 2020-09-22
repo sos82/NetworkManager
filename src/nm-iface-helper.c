@@ -19,6 +19,8 @@
 #include "nm-glib-aux/nm-c-list.h"
 
 #include "main-utils.h"
+#include "nm-ip4-config.h"
+#include "nm-ip6-config.h"
 #include "NetworkManagerUtils.h"
 #include "platform/nm-linux-platform.h"
 #include "platform/nm-platform-utils.h"
@@ -93,16 +95,16 @@ static struct {
 /*****************************************************************************/
 
 static void
-dhcp4_state_changed(NMDhcpClient *client,
-                    NMDhcpState   state,
-                    NMIP4Config * ip4_config,
-                    GHashTable *  options,
-                    gpointer      user_data)
+dhcp4_state_changed(NMDhcpClient *  client,
+                    NMDhcpState     state,
+                    NML3ConfigData *l3cfg,
+                    gpointer        user_data)
 {
     static NMIP4Config *last_config = NULL;
     NMIP4Config *       existing;
     gs_unref_ptrarray GPtrArray *ip4_dev_route_blacklist = NULL;
     gs_free_error GError *error                          = NULL;
+    NMIP4Config *         ip4_config                     = NULL;  //XXX
 
     g_return_if_fail(!ip4_config || NM_IS_IP4_CONFIG(ip4_config));
 
