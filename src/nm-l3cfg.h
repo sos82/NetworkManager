@@ -18,6 +18,13 @@
 
 #define NM_L3CFG_SIGNAL_NOTIFY "l3cfg-notify"
 
+typedef enum _nm_packed {
+    NM_L3_ACD_DEFEND_TYPE_NONE,
+    NM_L3_ACD_DEFEND_TYPE_NEVER,
+    NM_L3_ACD_DEFEND_TYPE_ONCE,
+    NM_L3_ACD_DEFEND_TYPE_ALWAYS,
+} NML3AcdDefendType;
+
 typedef enum {
     NM_L3_CONFIG_NOTIFY_TYPE_ROUTES_TEMPORARY_NOT_AVAILABLE_EXPIRED,
 
@@ -205,6 +212,7 @@ gboolean nm_l3cfg_add_config(NML3Cfg *             self,
                              guint32               default_route_metric_6,
                              guint32               default_route_penalty_4,
                              guint32               default_route_penalty_6,
+                             NML3AcdDefendType     acd_defend_type,
                              guint32               acd_timeout_msec,
                              NML3ConfigMergeFlags  merge_flags);
 

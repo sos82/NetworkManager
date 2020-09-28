@@ -59,6 +59,7 @@ typedef struct {
     const NML3ConfigData *l3cd;
     gconstpointer         tag;
     guint32               acd_timeout_msec;
+    NML3AcdDefendType     acd_defend_type : 3;
     bool                  acd_dirty : 1;
     bool                  acd_failed_notified : 1;
 } AcdTrackData;
@@ -133,11 +134,12 @@ typedef struct {
         };
         guint32 default_route_penalty_x[2];
     };
-    gconstpointer tag;
-    guint64       pseudo_timestamp;
-    int           priority;
-    guint32       acd_timeout_msec;
-    bool          dirty : 1;
+    gconstpointer     tag;
+    guint64           pseudo_timestamp;
+    int               priority;
+    guint32           acd_timeout_msec;
+    NML3AcdDefendType acd_defend_type : 3;
+    bool              dirty : 1;
 } L3ConfigData;
 
 /*****************************************************************************/
@@ -931,14 +933,16 @@ _acd_data_probe_result_is_good(const AcdData *acd_data)
 }
 
 static guint
-_acd_data_collect_tracks_data(const AcdData *acd_data,
-                              NMTernary      dirty_selector,
-                              NMTernary      acd_failed_notified_selector,
-                              guint32 *      out_best_acd_timeout_msec)
+_acd_data_collect_tracks_data(const AcdData *    acd_data,
+                              NMTernary          dirty_selector,
+                              NMTernary          acd_failed_notified_selector,
+                              guint32 *          out_best_acd_timeout_msec,
+                              NML3AcdDefendType *out_best_acd_defend_type)
 {
-    guint32       best_acd_timeout_msec = G_MAXUINT32;
-    AcdTrackData *acd_track;
-    guint         n = 0;
+    NML3AcdDefendType best_acd_defend_type  = NM_L3_ACD_DEFEND_TYPE_NONE;
+    guint32           best_acd_timeout_msec = G_MAXUINT32;
+    AcdTrackData *    acd_track;
+    guint             n = 0;
 
     c_list_for_each_entry (acd_track, &acd_data->acd_track_lst_head, acd_track_lst) {
         if (dirty_selector != NM_TERNARY_DEFAULT) {
@@ -952,9 +956,12 @@ _acd_data_collect_tracks_data(const AcdData *acd_data,
         n++;
         if (best_acd_timeout_msec > acd_track->acd_timeout_msec)
             best_acd_timeout_msec = acd_track->acd_timeout_msec;
+        if (best_acd_defend_type < acd_track->acd_defend_type)
+            best_acd_defend_type = acd_track->acd_defend_type;
     }
 
     NM_SET_OUT(out_best_acd_timeout_msec, n > 0 ? best_acd_timeout_msec : 0u);
+    NM_SET_OUT(out_best_acd_defend_type, best_acd_defend_type);
     return n;
 }
 
@@ -1534,13 +1541,14 @@ _l3_acd_data_notify_acd_completed(NML3Cfg *self, AcdData *acd_data, gboolean for
 
     nm_assert(NM_IS_L3CFG(self));
     nm_assert(acd_data);
-    nm_assert(_acd_data_collect_tracks_data(acd_data, FALSE, NM_TERNARY_DEFAULT, NULL) == 0);
+    nm_assert(_acd_data_collect_tracks_data(acd_data, FALSE, NM_TERNARY_DEFAULT, NULL, NULL) == 0);
 
     acd_failed_notified_selector = force_all ? NM_TERNARY_DEFAULT : FALSE;
 
     n = _acd_data_collect_tracks_data(acd_data,
                                       NM_TERNARY_DEFAULT,
                                       acd_failed_notified_selector,
+                                      NULL,
                                       NULL);
 
     if (n == 0)
@@ -1660,7 +1668,8 @@ _l3_acd_data_state_change(NML3Cfg *          self,
 
         if (_l3_acd_ipv4_addresses_on_link_contains(self, acd_data->addr)) {
             /* the address is already configured on the link. It is an automatic pass. */
-            if (_acd_data_collect_tracks_data(acd_data, FALSE, NM_TERNARY_DEFAULT, NULL) <= 0) {
+            if (_acd_data_collect_tracks_data(acd_data, FALSE, NM_TERNARY_DEFAULT, NULL, NULL)
+                <= 0) {
                 /* The entry has no non-dirty trackers, that means, it's no longer referenced
                  * and will be removed during the next _l3_acd_data_prune(). We can ignore
                  * this entry. */
@@ -2393,6 +2402,7 @@ nm_l3cfg_add_config(NML3Cfg *             self,
                     guint32               default_route_metric_6,
                     guint32               default_route_penalty_4,
                     guint32               default_route_penalty_6,
+                    NML3AcdDefendType     acd_defend_type,
                     guint32               acd_timeout_msec,
                     NML3ConfigMergeFlags  merge_flags)
 {
@@ -2404,6 +2414,11 @@ nm_l3cfg_add_config(NML3Cfg *             self,
     nm_assert(tag);
     nm_assert(l3cd);
     nm_assert(nm_l3_config_data_get_ifindex(l3cd) == self->priv.ifindex);
+    nm_assert(acd_timeout_msec < ACD_MAX_TIMEOUT_MSEC);
+    nm_assert(NM_IN_SET(acd_defend_type,
+                        NM_L3_ACD_DEFEND_TYPE_NEVER,
+                        NM_L3_ACD_DEFEND_TYPE_ONCE,
+                        NM_L3_ACD_DEFEND_TYPE_ALWAYS));
 
     nm_assert(default_route_metric_6 != 0u); /* IPv6 default route metric cannot be zero. */
 
@@ -2458,6 +2473,7 @@ nm_l3cfg_add_config(NML3Cfg *             self,
             .default_route_metric_6  = default_route_metric_6,
             .default_route_penalty_4 = default_route_penalty_4,
             .default_route_penalty_6 = default_route_penalty_6,
+            .acd_defend_type         = acd_defend_type,
             .acd_timeout_msec        = acd_timeout_msec,
             .priority                = priority,
             .pseudo_timestamp        = ++self->priv.p->pseudo_timestamp_counter,
@@ -2501,11 +2517,17 @@ nm_l3cfg_add_config(NML3Cfg *             self,
             l3_config_data->default_route_penalty_6 = default_route_penalty_6;
             changed                                 = TRUE;
         }
+        if (l3_config_data->acd_defend_type != acd_defend_type) {
+            l3_config_data->acd_defend_type = acd_defend_type;
+            changed                         = TRUE;
+        }
         if (l3_config_data->acd_timeout_msec != acd_timeout_msec) {
             l3_config_data->acd_timeout_msec = acd_timeout_msec;
             changed                          = TRUE;
         }
     }
+
+    nm_assert(l3_config_data->acd_defend_type == acd_defend_type);
 
     if (changed)
         _l3_changed_configs_set_dirty(self);
